@@ -1,45 +1,45 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import React from 'react';
+import { StatusBar } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { CameraScreen } from './src/screens/CameraScreen';
+import { ImageScreen } from './src/screens/ImageScreen';
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
-import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+const Tab = createBottomTabNavigator();
 
-function App() {
-  const isDarkMode = useColorScheme() === 'dark';
-
+const App = () => {
   return (
-    <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
-    </SafeAreaProvider>
+    <>
+      <StatusBar barStyle="light-content" backgroundColor="black" />
+      <NavigationContainer>
+        <Tab.Navigator
+          screenOptions={{
+            headerShown: false,
+            tabBarActiveTintColor: 'green',
+            tabBarStyle: {
+              backgroundColor: 'black',
+              borderTopColor: 'gray',
+            },
+          }}
+        >
+          <Tab.Screen
+            name="Camera"
+            component={CameraScreen}
+            options={{
+              tabBarLabel: 'Camera',
+            }}
+          />
+          <Tab.Screen
+            name="Image"
+            component={ImageScreen}
+            options={{
+              tabBarLabel: 'Image',
+            }}
+          />
+        </Tab.Navigator>
+      </NavigationContainer>
+    </>
   );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});
+};
 
 export default App;
