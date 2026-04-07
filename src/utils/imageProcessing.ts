@@ -4,13 +4,14 @@ export interface Detection {
   width: number;
   height: number;
   confidence: number;
+  plateText?: string;
 }
 
-export const INPUT_WIDTH = 576;
-export const INPUT_HEIGHT = 576;
-export const CONFIDENCE_THRESHOLD = 0.7; // Much higher to reduce false positives
-export const NMS_THRESHOLD = 0.3; // Lower to merge more overlapping boxes
-export const MAX_DETECTIONS = 10; // Limit max detections per image
+export const INPUT_WIDTH = 640;
+export const INPUT_HEIGHT = 640;
+export const CONFIDENCE_THRESHOLD = 0.3;
+export const NMS_THRESHOLD = 0.4;
+export const MAX_DETECTIONS = 10;
 
 const IMAGENET_MEAN = [0.485, 0.456, 0.406];
 const IMAGENET_STD = [0.229, 0.224, 0.225];
@@ -41,6 +42,34 @@ export function preprocessNormalized(
       floatData[idx] = normR;
       floatData[INPUT_WIDTH * INPUT_HEIGHT + idx] = normG;
       floatData[2 * INPUT_WIDTH * INPUT_HEIGHT + idx] = normB;
+    }
+  }
+
+  return floatData;
+}
+
+export function preprocessYOLOv11(
+  pixels: Float32Array,
+  srcWidth: number,
+  srcHeight: number,
+): Float32Array {
+  const floatData = new Float32Array(3 * INPUT_HEIGHT * INPUT_WIDTH);
+  const totalSrcPixels = srcWidth * srcHeight;
+
+  for (let y = 0; y < INPUT_HEIGHT; y++) {
+    for (let x = 0; x < INPUT_WIDTH; x++) {
+      const srcX = Math.floor((x / INPUT_WIDTH) * srcWidth);
+      const srcY = Math.floor((y / INPUT_HEIGHT) * srcHeight);
+      const srcIdx = srcY * srcWidth + srcX;
+
+      const r = pixels[srcIdx];
+      const g = pixels[totalSrcPixels + srcIdx];
+      const b = pixels[2 * totalSrcPixels + srcIdx];
+
+      const idx = y * INPUT_WIDTH + x;
+      floatData[idx] = r;
+      floatData[INPUT_WIDTH * INPUT_HEIGHT + idx] = g;
+      floatData[2 * INPUT_WIDTH * INPUT_HEIGHT + idx] = b;
     }
   }
 

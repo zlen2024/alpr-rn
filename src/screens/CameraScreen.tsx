@@ -22,6 +22,20 @@ export const CameraScreen: React.FC = () => {
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused = useIsFocused();
 
+  // Find a format with smaller photo dimensions to stay under API file size limit
+  const format =
+    device?.formats.find(f => {
+      const photoWidth = f.photoWidth;
+      const photoHeight = f.photoHeight;
+      // Target around 1080p or smaller to keep file size under 2MB
+      return photoWidth <= 1920 && photoHeight <= 1920;
+    }) || device?.formats[0];
+
+  console.log(
+    '[CameraScreen] Selected format:',
+    format ? `${format.photoWidth}x${format.photoHeight}` : 'default',
+  );
+
   const [detections, setDetections] = useState<Detection[]>([]);
   const [isDetecting, setIsDetecting] = useState(false);
   const [isModelLoading, setIsModelLoading] = useState(true);
@@ -62,12 +76,30 @@ export const CameraScreen: React.FC = () => {
     setIsDetecting(true);
 
     try {
-      const photo: PhotoFile = await cameraRef.current.takePhoto();
+      // Take photo
+      const photo: PhotoFile = await cameraRef.current.takePhoto({
+        flash: 'off',
+      });
 
       const photoUri = `file://${photo.path}`;
       setLastPhotoUri(photoUri);
 
-      const result = await imageDetector.detectFromImagePath(photoUri);
+      // Use actual photo dimensions from the metadata
+      const photoWidth = photo.width || 1920;
+      const photoHeight = photo.height || 1080;
+
+      console.log(
+        '[CameraScreen] Photo dimensions:',
+        photoWidth,
+        'x',
+        photoHeight,
+      );
+
+      const result = await imageDetector.detectFromImagePath(
+        photoUri,
+        photoWidth,
+        photoHeight,
+      );
       setDetections(result);
     } catch (e) {
       console.error('Detection error:', e);
@@ -85,7 +117,7 @@ export const CameraScreen: React.FC = () => {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color="green" />
-        <Text style={styles.loadingText}>Loading model...</Text>
+        <Text style={styles.loadingText}>Loading...</Text>
       </View>
     );
   }
@@ -113,8 +145,10 @@ export const CameraScreen: React.FC = () => {
         ref={cameraRef}
         style={StyleSheet.absoluteFill}
         device={device}
+        format={format}
         isActive={isFocused && !isModelLoading}
         photo={true}
+        photoQualityBalance="balanced"
       />
       <DetectionOverlay
         detections={detections}

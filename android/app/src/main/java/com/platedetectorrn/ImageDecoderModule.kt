@@ -8,11 +8,11 @@ import android.graphics.YuvImage
 import com.facebook.react.bridge.*
 import java.io.ByteArrayOutputStream
 
-class ImageDecoderModule(reactContext: ReactApplicationContext) : 
+class ImageDecoderModule(reactContext: ReactApplicationContext) :
     ReactContextBaseJavaModule(reactContext) {
-    
-    private val inputWidth = 576
-    private val inputHeight = 576
+
+    private val inputWidth = 640
+    private val inputHeight = 640
     
     override fun getName() = "ImageDecoder"
     
@@ -163,6 +163,28 @@ class ImageDecoderModule(reactContext: ReactApplicationContext) :
             promise.resolve(result)
         } catch (e: Exception) {
             promise.reject("CONVERT_ERROR", "Failed to convert YUV: ${e.message}")
+        }
+    }
+
+    @ReactMethod
+    fun copyAssetToFile(assetName: String, destPath: String, promise: Promise) {
+        try {
+            val assetManager = reactApplicationContext.assets
+            val inputStream = assetManager.open(assetName)
+            val outputFile = java.io.File(destPath)
+            
+            // Create parent directories if needed
+            outputFile.parentFile?.mkdirs()
+            
+            inputStream.use { input ->
+                outputFile.outputStream().use { output ->
+                    input.copyTo(output)
+                }
+            }
+            
+            promise.resolve(destPath)
+        } catch (e: Exception) {
+            promise.reject("COPY_ERROR", "Failed to copy asset '$assetName': ${e.message}")
         }
     }
 }

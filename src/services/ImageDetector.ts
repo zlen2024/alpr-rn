@@ -1,24 +1,39 @@
+import { Platform } from 'react-native';
+import { decodeImage } from './ImageDecoder';
 import { plateDetector } from './PlateDetector';
-import { decodeImage, convertYuvToRgb } from './ImageDecoder';
-import { Detection, INPUT_WIDTH, INPUT_HEIGHT } from '../utils/imageProcessing';
-import { preprocessNormalized } from '../utils/imageProcessing';
+import { Detection, preprocessYOLOv11 } from '../utils/imageProcessing';
 
 class ImageDetector {
   private isInitialized = false;
 
   async init(): Promise<void> {
-    console.log('[ImageDetector] Initializing...');
+    if (this.isInitialized) {
+      console.log('[ImageDetector] Already initialized, skipping');
+      return;
+    }
+
+    console.log('[ImageDetector] Initializing with local ONNX model');
+    console.log('[ImageDetector] Platform:', Platform.OS);
+
     await plateDetector.init();
+
     this.isInitialized = true;
     console.log('[ImageDetector] Initialization complete');
   }
 
   isReady(): boolean {
-    return this.isInitialized && plateDetector.isReady();
+    return this.isInitialized;
   }
 
-  async detectFromImagePath(imagePath: string): Promise<Detection[]> {
-    console.log('[ImageDetector] detectFromImagePath called with:', imagePath);
+  async detectFromImagePath(
+    imagePath: string,
+    imageWidth: number,
+    imageHeight: number,
+    _regions?: string[],
+  ): Promise<Detection[]> {
+    console.log('[ImageDetector] detectFromImagePath called');
+    console.log('[ImageDetector] Path:', imagePath);
+    console.log('[ImageDetector] Dimensions:', imageWidth, 'x', imageHeight);
 
     if (!this.isReady()) {
       throw new Error('Detector not initialized. Call init() first.');
@@ -31,54 +46,27 @@ class ImageDetector {
         decoded.width,
         'x',
         decoded.height,
+        'scaleX:',
+        decoded.scaleX,
+        'scaleY:',
+        decoded.scaleY,
       );
 
-      const normalizedPixels = preprocessNormalized(
+      const preprocessed = preprocessYOLOv11(
         decoded.pixels,
         decoded.width,
         decoded.height,
       );
 
-      const detections = await plateDetector.detect(normalizedPixels);
+      const detections = await plateDetector.detect(preprocessed);
+
       console.log('[ImageDetector] Detections:', detections.length);
 
-      // Coordinates are already normalized (0-1) by PlateDetector
+      // Return detections in 640x640 coordinate space
+      // DetectionOverlay will handle the scaling to screen coordinates
       return detections;
     } catch (error) {
-      console.error('[ImageDetector] Error in detectFromImagePath:', error);
-      throw error;
-    }
-  }
-
-  async detectFromCameraFrame(
-    yData: number[],
-    uData: number[],
-    vData: number[],
-    width: number,
-    height: number,
-  ): Promise<Detection[]> {
-    console.log('[ImageDetector] detectFromCameraFrame called');
-
-    if (!this.isReady()) {
-      throw new Error('Detector not initialized');
-    }
-
-    try {
-      const rgb = await convertYuvToRgb(yData, uData, vData, width, height);
-
-      const normalizedPixels = preprocessNormalized(
-        rgb.pixels,
-        rgb.width,
-        rgb.height,
-      );
-
-      const detections = await plateDetector.detect(normalizedPixels);
-      console.log('[ImageDetector] Camera detections:', detections.length);
-
-      // Coordinates are already normalized (0-1) by PlateDetector
-      return detections;
-    } catch (error) {
-      console.error('[ImageDetector] Error in detectFromCameraFrame:', error);
+      console.error('[ImageDetector] Error:', error);
       throw error;
     }
   }

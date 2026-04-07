@@ -18,6 +18,7 @@
     "react-native": "0.84.1",
     "react-native-fs": "^2.20.0",
     "react-native-image-picker": "^8.2.1",
+    "react-native-image-resizer": "^1.4.5",
     "react-native-safe-area-context": "^5.7.0",
     "react-native-screens": "^4.24.0",
     "react-native-vision-camera": "^4.7.3"

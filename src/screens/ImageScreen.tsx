@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Dimensions,
 } from 'react-native';
 import {
   launchImageLibrary,
@@ -20,9 +21,10 @@ import { imageDetector } from '../services/ImageDetector';
 import { DetectionOverlay } from '../components/DetectionOverlay';
 
 export const ImageScreen: React.FC = () => {
-  const [detectorReady, setDetectorReady] = React.useState(false);
-  React.useEffect(() => {
-    (async () => {
+  const [detectorReady, setDetectorReady] = useState(false);
+
+  useEffect(() => {
+    const init = async () => {
       try {
         await imageDetector.init();
         setDetectorReady(true);
@@ -30,7 +32,8 @@ export const ImageScreen: React.FC = () => {
         console.error('Plate detector init error:', e);
         Alert.alert('Error', 'Failed to initialize detector');
       }
-    })();
+    };
+    init();
   }, []);
 
   const [selectedImage, setSelectedImage] = useState<Asset | null>(null);
@@ -92,7 +95,21 @@ export const ImageScreen: React.FC = () => {
     setIsDetecting(true);
 
     try {
-      const result = await imageDetector.detectFromImagePath(asset.uri);
+      const imageWidth = asset.width || 1920;
+      const imageHeight = asset.height || 1080;
+
+      console.log(
+        '[ImageScreen] Image dimensions:',
+        imageWidth,
+        'x',
+        imageHeight,
+      );
+
+      const result = await imageDetector.detectFromImagePath(
+        asset.uri,
+        imageWidth,
+        imageHeight,
+      );
       setDetections(result);
     } catch (e) {
       console.error('Detection error:', e);
@@ -106,6 +123,71 @@ export const ImageScreen: React.FC = () => {
     const { width, height } = event.nativeEvent.layout;
     setImageLayout({ width, height });
   };
+
+  // Calculate the actual displayed image size within the container
+  const getImageDisplayMetrics = () => {
+    if (
+      !selectedImage?.width ||
+      !selectedImage?.height ||
+      imageLayout.width === 0
+    ) {
+      return null;
+    }
+
+    const imgAspect = selectedImage.width / selectedImage.height;
+    const containerAspect = imageLayout.width / imageLayout.height;
+
+    console.log(
+      '[ImageScreen] Container:',
+      imageLayout.width,
+      'x',
+      imageLayout.height,
+    );
+    console.log(
+      '[ImageScreen] Image:',
+      selectedImage.width,
+      'x',
+      selectedImage.height,
+    );
+    console.log(
+      '[ImageScreen] Aspect ratios - img:',
+      imgAspect.toFixed(3),
+      'container:',
+      containerAspect.toFixed(3),
+    );
+
+    let displayWidth: number;
+    let displayHeight: number;
+    let offsetX: number;
+    let offsetY: number;
+
+    if (imgAspect > containerAspect) {
+      // Image is wider - fit to container width
+      displayWidth = imageLayout.width;
+      displayHeight = imageLayout.width / imgAspect;
+      offsetX = 0;
+      offsetY = (imageLayout.height - displayHeight) / 2;
+      console.log('[ImageScreen] Wide image mode');
+    } else {
+      // Image is taller - fit to container height
+      displayWidth = imageLayout.height * imgAspect;
+      displayHeight = imageLayout.height;
+      offsetX = (imageLayout.width - displayWidth) / 2;
+      offsetY = 0;
+      console.log('[ImageScreen] Tall image mode');
+    }
+
+    console.log('[ImageScreen] Display metrics:', {
+      displayWidth: displayWidth.toFixed(1),
+      displayHeight: displayHeight.toFixed(1),
+      offsetX: offsetX.toFixed(1),
+      offsetY: offsetY.toFixed(1),
+    });
+
+    return { displayWidth, displayHeight, offsetX, offsetY };
+  };
+
+  const imageMetrics = getImageDisplayMetrics();
 
   return (
     <View style={styles.container}>
@@ -129,14 +211,26 @@ export const ImageScreen: React.FC = () => {
             style={styles.image}
             resizeMode="contain"
           />
-          {imageLayout.width > 0 && detections.length > 0 && (
-            <DetectionOverlay
-              detections={detections}
-              previewWidth={selectedImage.width ?? 1920}
-              previewHeight={selectedImage.height ?? 1080}
-              screenWidth={imageLayout.width}
-              screenHeight={imageLayout.height}
-            />
+          {imageMetrics && detections.length > 0 && (
+            <View
+              style={[
+                styles.overlayContainer,
+                {
+                  left: imageMetrics.offsetX,
+                  top: imageMetrics.offsetY,
+                  width: imageMetrics.displayWidth,
+                  height: imageMetrics.displayHeight,
+                },
+              ]}
+            >
+              <DetectionOverlay
+                detections={detections}
+                previewWidth={640}
+                previewHeight={640}
+                screenWidth={imageMetrics.displayWidth}
+                screenHeight={imageMetrics.displayHeight}
+              />
+            </View>
           )}
           {isDetecting && (
             <View style={styles.detectingOverlay}>
@@ -197,6 +291,9 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
+  },
+  overlayContainer: {
+    position: 'absolute',
   },
   detectingOverlay: {
     ...StyleSheet.absoluteFillObject,
