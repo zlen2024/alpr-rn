@@ -18,57 +18,36 @@ export const DetectionOverlay: React.FC<DetectionOverlayProps> = ({
   screenHeight,
 }) => {
   const transforms = React.useMemo(() => {
-    // For resizeMode="contain", the image is scaled uniformly to fit within screen dimensions
-    // The scale is determined by the limiting dimension
+    // The screen dimensions passed here are ALREADY the displayed image size
+    // (after resizeMode="contain" letterboxing)
+    // We just need to scale from model space (0-640) to screen space
+
     const scaleX = screenWidth / previewWidth;
     const scaleY = screenHeight / previewHeight;
+
+    // Use the same scale for both dimensions to maintain aspect ratio
     const imgScale = Math.min(scaleX, scaleY);
 
-    // Calculate the actual rendered image size
-    const renderedW = previewWidth * imgScale;
-    const renderedH = previewHeight * imgScale;
-
-    // Calculate offsets (letterboxing)
-    const offsetX = (screenWidth - renderedW) / 2;
-    const offsetY = (screenHeight - renderedH) / 2;
-
     console.log(
-      '[DetectionOverlay] Screen:',
+      '[DetectionOverlay] Screen (displayed):',
       screenWidth.toFixed(1),
       'x',
       screenHeight.toFixed(1),
     );
-    console.log(
-      '[DetectionOverlay] Preview (model):',
-      previewWidth,
-      'x',
-      previewHeight,
-    );
+    console.log('[DetectionOverlay] Model:', previewWidth, 'x', previewHeight);
     console.log('[DetectionOverlay] Scale:', imgScale.toFixed(4));
-    console.log(
-      '[DetectionOverlay] Rendered:',
-      renderedW.toFixed(1),
-      'x',
-      renderedH.toFixed(1),
-    );
-    console.log(
-      '[DetectionOverlay] Offset:',
-      offsetX.toFixed(1),
-      offsetY.toFixed(1),
-    );
-    console.log('[DetectionOverlay] Detections:', detections.length);
 
     return detections.map((detection, index) => {
-      // Detection coordinates are normalized (0-1) relative to preview size
-      // Scale to rendered size and add offset
-      const x = detection.x * renderedW + offsetX;
-      const y = detection.y * renderedH + offsetY;
-      const w = detection.width * renderedW;
-      const h = detection.height * renderedH;
+      // Detection coordinates are normalized (0-1) relative to 640x640
+      // Scale directly to screen space - NO offset needed (container handles letterboxing)
+      const x = detection.x * screenWidth;
+      const y = detection.y * screenHeight;
+      const w = detection.width * screenWidth;
+      const h = detection.height * screenHeight;
 
       if (index < 3) {
         console.log(
-          `[DetectionOverlay] Box ${index}: det(${detection.x.toFixed(3)}, ${detection.y.toFixed(3)}, ${detection.width.toFixed(3)}, ${detection.height.toFixed(3)}) => screen(${x.toFixed(1)}, ${y.toFixed(1)}, ${w.toFixed(1)}, ${h.toFixed(1)})`,
+          `[DetectionOverlay] Box ${index}: model(${detection.x.toFixed(3)}, ${detection.y.toFixed(3)}) => screen(${x.toFixed(1)}, ${y.toFixed(1)}, ${w.toFixed(1)}, ${h.toFixed(1)})`,
         );
       }
 

@@ -84,29 +84,22 @@ class PlateDetector {
 
       const isAndroid = Platform.OS === 'android';
 
-      // Try hardware acceleration first, fall back to CPU if it fails
-      const hardwareProviders = isAndroid ? ['nnapi'] : ['coreml'];
-      const cpuProviders = ['cpu'];
+      // XNNPACK is a highly optimized CPU engine (made by Google)
+      // It's very fast and more stable than NNAPI for YOLO models
+      const executionProviders = isAndroid
+        ? ['xnnpack', 'cpu'] // Android: Try XNNPACK first, fallback to CPU
+        : ['coreml', 'cpu']; // iOS: Try CoreML, fallback to CPU
 
-      try {
-        console.log(
-          '[PlateDetector] Trying hardware acceleration:',
-          hardwareProviders,
-        );
-        this.session = await InferenceSession.create(modelPath, {
-          executionProviders: hardwareProviders,
-        });
-        console.log('[PlateDetector] Hardware acceleration initialized');
-      } catch (hardwareError) {
-        console.log(
-          '[PlateDetector] Hardware acceleration failed, falling back to CPU:',
-          hardwareError,
-        );
-        this.session = await InferenceSession.create(modelPath, {
-          executionProviders: cpuProviders,
-        });
-        console.log('[PlateDetector] CPU execution initialized');
-      }
+      console.log(
+        '[PlateDetector] Using execution providers:',
+        executionProviders,
+      );
+
+      this.session = await InferenceSession.create(modelPath, {
+        executionProviders,
+      });
+
+      console.log('[PlateDetector] ONNX Runtime session initialized');
 
       const inputNames = this.session.handler.inputNames;
       const outputNames = this.session.handler.outputNames;
