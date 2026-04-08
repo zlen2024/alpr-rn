@@ -7,41 +7,12 @@ import {
   INPUT_WIDTH,
   INPUT_HEIGHT,
   CONFIDENCE_THRESHOLD,
-  NMS_THRESHOLD,
   MAX_DETECTIONS,
   applyNMS,
 } from '../utils/imageProcessing';
 
 function sigmoid(x: number): number {
   return 1 / (1 + Math.exp(-x));
-}
-
-function calculateIoU(a: Detection, b: Detection): number {
-  const x1 = a.x;
-  const y1 = a.y;
-  const x2 = a.x + a.width;
-  const y2 = a.y + a.height;
-
-  const ix1 = b.x;
-  const iy1 = b.y;
-  const ix2 = b.x + b.width;
-  const iy2 = b.y + b.height;
-
-  const interLeft = Math.max(x1, ix1);
-  const interTop = Math.max(y1, iy1);
-  const interRight = Math.min(x2, ix2);
-  const interBottom = Math.min(y2, iy2);
-
-  const interW = Math.max(0, interRight - interLeft);
-  const interH = Math.max(0, interBottom - interTop);
-  const interArea = interW * interH;
-
-  const areaA = a.width * a.height;
-  const areaB = b.width * b.height;
-  const union = areaA + areaB - interArea;
-
-  if (union <= 0) return 0;
-  return interArea / union;
 }
 
 class PlateDetector {

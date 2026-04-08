@@ -2,9 +2,14 @@ import { Platform } from 'react-native';
 import { decodeImage } from './ImageDecoder';
 import { plateDetector } from './PlateDetector';
 import { Detection, preprocessYOLOv11 } from '../utils/imageProcessing';
+import {
+  loadAndPreprocessImage,
+  isNativeModuleAvailable,
+} from './NativePlateDetector';
 
 class ImageDetector {
   private isInitialized = false;
+  private useNativePreprocessing = false;
 
   async init(): Promise<void> {
     if (this.isInitialized) {
@@ -14,6 +19,13 @@ class ImageDetector {
 
     console.log('[ImageDetector] Initializing with local ONNX model');
     console.log('[ImageDetector] Platform:', Platform.OS);
+
+    // Check if native module is available
+    this.useNativePreprocessing = isNativeModuleAvailable();
+    console.log(
+      '[ImageDetector] Native preprocessing:',
+      this.useNativePreprocessing ? 'enabled' : 'disabled',
+    );
 
     await plateDetector.init();
 
@@ -40,30 +52,42 @@ class ImageDetector {
     }
 
     try {
-      const decoded = await decodeImage(imagePath);
-      console.log(
-        '[ImageDetector] Decoded:',
-        decoded.width,
-        'x',
-        decoded.height,
-        'scaleX:',
-        decoded.scaleX,
-        'scaleY:',
-        decoded.scaleY,
-      );
+      let pixels: Float32Array;
+      let width: number;
+      let height: number;
 
-      const preprocessed = preprocessYOLOv11(
-        decoded.pixels,
-        decoded.width,
-        decoded.height,
-      );
+      if (this.useNativePreprocessing) {
+        // Use native module for faster preprocessing
+        console.log('[ImageDetector] Using native preprocessing');
+        const result = await loadAndPreprocessImage(imagePath);
+        width = result.width;
+        height = result.height;
 
+        // Convert to Float32Array
+        pixels = new Float32Array(result.data);
+      } else {
+        // Use JS preprocessing (fallback)
+        const decoded = await decodeImage(imagePath);
+        console.log(
+          '[ImageDetector] Decoded:',
+          decoded.width,
+          'x',
+          decoded.height,
+          'scaleX:',
+          decoded.scaleX,
+          'scaleY:',
+          decoded.scaleY,
+        );
+        width = decoded.width;
+        height = decoded.height;
+        pixels = decoded.pixels;
+      }
+
+      const preprocessed = preprocessYOLOv11(pixels, width, height);
       const detections = await plateDetector.detect(preprocessed);
 
       console.log('[ImageDetector] Detections:', detections.length);
 
-      // Return detections in 640x640 coordinate space
-      // DetectionOverlay will handle the scaling to screen coordinates
       return detections;
     } catch (error) {
       console.error('[ImageDetector] Error:', error);

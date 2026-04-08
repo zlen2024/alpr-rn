@@ -21,7 +21,8 @@
     "react-native-image-resizer": "^1.4.5",
     "react-native-safe-area-context": "^5.7.0",
     "react-native-screens": "^4.24.0",
-    "react-native-vision-camera": "^4.7.3"
+    "react-native-vision-camera": "^4.7.3",
+    "react-native-worklets-core": "^1.6.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

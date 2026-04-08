@@ -8,7 +8,8 @@ import com.facebook.react.uimanager.ViewManager
 class PlateDetectorPackage : ReactPackage {
     override fun createNativeModules(reactContext: ReactApplicationContext): List<NativeModule> {
         return listOf(
-            ImageDecoderModule(reactContext)
+            ImageDecoderModule(reactContext),
+            PlateNativeDetector(reactContext)
         )
     }
 

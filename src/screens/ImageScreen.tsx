@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
-  Dimensions,
 } from 'react-native';
 import {
   launchImageLibrary,
